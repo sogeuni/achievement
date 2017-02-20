@@ -114,9 +114,7 @@ class Exophase:
 
         return results
 
-    def __getGameInfo(self, url):
-        result = {}
-
+    def __getGameInfo(self, url, result):
         html = urlopen(url)
         bs = BeautifulSoup(html, "lxml")
 
@@ -144,12 +142,13 @@ class Exophase:
         except:
             result["release"] = ""
 
+
     def getInfo(self, url, debug=False):
         logging.debug("getInfo: " + url)
 
         result = {}
 
-        result['_id'] = self.getId(url)
+        result['gid'] = self.getId(url)
 
         self.__getGameInfo(url, result)
 
@@ -163,6 +162,7 @@ class Exophase:
         result['total-score'] = sum(item['score'] for item in items)
         result['item-count'] = len(items)
         result['items'] = items
+        logging.debug(result)
 
         return result
 
