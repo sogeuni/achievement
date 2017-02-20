@@ -2,15 +2,12 @@ from urllib.parse import quote_plus, urlparse
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from datetime import datetime
-import time
 import logging
 import re
 
 logging.basicConfig(level=logging.DEBUG)
 
 class Exophase:
-    """exophase.com parser"""
-
     def __init__(self, url="https://www.exophase.com"):
         logging.debug("Exophase init: " + url)
         self.__url = urlparse(url)
@@ -117,7 +114,9 @@ class Exophase:
 
         return results
 
-    def __getGameInfo(self, url, result):
+    def __getGameInfo(self, url):
+        result = {}
+
         html = urlopen(url)
         bs = BeautifulSoup(html, "lxml")
 
