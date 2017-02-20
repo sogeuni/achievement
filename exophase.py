@@ -2,6 +2,7 @@ from urllib.parse import quote_plus, urlparse
 from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from datetime import datetime
+import time
 import logging
 import re
 
@@ -116,9 +117,7 @@ class Exophase:
 
         return results
 
-    def __getGameInfo(self, url):
-        result = {}
-
+    def __getGameInfo(self, url, result):
         html = urlopen(url)
         bs = BeautifulSoup(html, "lxml")
 
@@ -141,17 +140,19 @@ class Exophase:
             result["genre"] = ""
 
         try:
-            result["release"] = datetime.datetime.strptime(bs.find("dt", text="Release Date:")
-                                                           .findNext().get_text().strip(), "%B %d, %Y")
+            result["release"] = datetime.strptime(bs.find("dt", text="Release Date:")
+                                                .findNext().get_text().strip(), "%B %d, %Y").strftime("%Y-%m-%d")
         except:
             result["release"] = ""
-
-        return result
 
     def getInfo(self, url, debug=False):
         logging.debug("getInfo: " + url)
 
-        result = self.__getGameInfo(url)
+        result = {}
+
+        result['_id'] = self.getId(url)
+
+        self.__getGameInfo(url, result)
 
         if "ps3" in url or "ps4" in url or "psn" in url:
             result['type'] = "trophy"
@@ -165,6 +166,14 @@ class Exophase:
         result['items'] = items
 
         return result
+
+    def getId(self, url):
+        import hashlib
+
+        logging.debug("getId: " + url)
+
+        l = [x for x in url.split("/") if x]
+        return hashlib.md5(l[len(l) - 1].encode("utf-8")).hexdigest()
 
 if __name__ == "__main__":
     import random
@@ -182,6 +191,9 @@ if __name__ == "__main__":
 
     # print(exo.getInfo("file:///Volumes/Data/personal/exo/fifa-17-ps4.html", debug=True))
     # print(exo.getInfo("file:///Volumes/Data/personal/exo/test.html", debug=True))
-    print(exo.getInfo("https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn"))
+    # print(exo.getInfo("https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn"))
+    exo.getInfo("https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn/")
 
-
+    # import hashlib
+    # print(hashlib.md5(b"https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn").hexdigest())
+    # print(hashlib.md5(b"https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn/").hexdigest())
