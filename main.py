@@ -20,8 +20,10 @@ if __name__ == "__main__":
     #searchResult = exo.search("wrc 6")
     # print(searchResult)
 
-    url = "https://www.exophase.com/game/wrc-6-ps4/"
+    # url = "https://www.exophase.com/game/wrc-6-ps4/"
+    # url = "https://www.exophase.com/game/wrc-6-steam/"
     # url = "https://www.exophase.com/game/the-inner-world-xbox-one/"
+    url = "https://www.exophase.com/game/wrc-6-fia-world-rally-championship-xbox-one/"
 
     items = collection.find({"gid": exo.getId(url)})
 

@@ -1,4 +1,4 @@
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus, quote, urlparse
 from urllib.request import urlopen
 from urllib.request import urlretrieve
 from bs4 import BeautifulSoup
@@ -6,7 +6,6 @@ from datetime import datetime
 import logging
 import re
 import os
-import base64
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -58,6 +57,9 @@ class Exophase:
         return list(set(links))
 
     def __getPsInfo(self, url, debug=False):
+        gid = self.getId(url)
+        os.mkdir(self.imgPath + "/" + gid)
+
         if debug == False:
             url += (url[len(url)-1] == "/") and "trophies/kr/" or "/trophies/kr/"
 
@@ -75,12 +77,13 @@ class Exophase:
 
             title = item.find("div", {"class": "trophy-title"}).get_text().strip()
 
-            result["id"] = self.getId(url + quote_plus(title))
-            result["image"] = result["id"] + ".png"
+            result["id"] = self.getId(url + quote(title))
 
-            if not self.__isExistImg(result["image"]):
-                logging.debug("item image download: " + result["image"])
-                urlretrieve(item.find("img")['src'].replace("/s/", "/l/"), self.imgPath + "/" + result["image"])
+            img = result["id"] + ".png"
+
+            if not self.__isExistImg(gid + "/" + img):
+                logging.debug("item image download: " + img)
+                urlretrieve(item.find("img")['src'].replace("/s/", "/l/"), self.imgPath + "/" + gid + "/" + img)
 
             result["order"] = item["data-award-id"]
             result["secret"] = False if (item.find("div", {"class": "secret"}) == None) else True
@@ -108,6 +111,9 @@ class Exophase:
         return results
 
     def __getXboxInfo(self, url, debug=False):
+        gid = self.getId(url)
+        os.mkdir(self.imgPath + "/" + gid)
+
         if debug == False:
             url += (url[len(url) - 1] == "/") and "achievements/kr/" or "/achievements/kr/"
 
@@ -125,19 +131,24 @@ class Exophase:
 
             title = item.find("div", {"class": "trophy-title"}).get_text().strip()
 
-            result["id"] = self.getId(url + quote_plus(title))
-            result["image"] = result["id"] + ".png"
+            result["id"] = self.getId(url + quote(title))
+            img = result["id"] + ".png"
 
-            if not self.__isExistImg(result["image"]):
-                logging.debug("item image download: " + result["image"])
-                urlretrieve(item.find("img")['src'].replace("/s/", "/l/"), self.imgPath + "/" + result["image"])
+            if not self.__isExistImg(gid + "/" + img):
+                logging.debug("item image download: " + img)
+                urlretrieve(item.find("img")['src'].replace("/s/", "/l/"), self.imgPath + "/" + gid + "/" + img)
 
             result["order"] = item["data-award-id"]
             result["secret"] = False if (item.find("div", {"class": "secret"}) == None) else True
             result["title"] = title
             result["desc"] = item.find("div", {"class": "trophy-desc"}).get_text().strip()
             result["type"] = None
-            result["score"] = int(re.findall(r'\d+', item.find("div", {"class": "gamerscore"}).get_text())[0])
+
+            try:
+                result["score"] = int(re.findall(r'\d+', item.find("div", {"class": "gamerscore"}).get_text())[0])
+            except:
+                result["score"] = None
+
             result["rarity"] = item.find("div", {"class": "rarity"}).span.span['title'].lower()
 
             results.append(result)
@@ -150,11 +161,11 @@ class Exophase:
 
         # logging.debug(bs)
 
-        result["image"] = result["gid"] + ".png"
+        img = result["gid"] + ".png"
 
-        if not self.__isExistImg(result["image"]):
-            logging.debug("game image download: " + result["image"])
-            urlretrieve(bs.find("div", {"class": "feature-header"}).a.img["src"], self.imgPath + "/" + result["image"])
+        if not self.__isExistImg(img):
+            logging.debug("game image download: " + img)
+            urlretrieve(bs.find("div", {"class": "feature-header"}).a.img["src"], self.imgPath + "/" + img)
 
         # response = urlopen(bs.find("div", {"class": "feature-header"}).a.img["src"])
         # result["image"] = base64.b64encode(response.read())
@@ -200,7 +211,11 @@ class Exophase:
             result['type'] = "achievement"
             items = self.__getXboxInfo(url, debug)
 
-        result['total-score'] = sum(item['score'] for item in items)
+        try:
+            result['total-score'] = sum(item['score'] for item in items)
+        except:
+            pass
+
         result['item-count'] = len(items)
         result['items'] = items
         logging.debug(result)
@@ -208,12 +223,15 @@ class Exophase:
         return result
 
     def getId(self, url):
-        import hashlib
+        import uuid
 
-        logging.debug("getId: " + url)
+        if url[len(url) - 1] != "/":
+            url += "/"
 
-        l = [x for x in url.split("/") if x]
-        return hashlib.md5(l[len(l) - 1].encode("utf-8")).hexdigest()[:12]
+        id = str(uuid.uuid3(uuid.NAMESPACE_URL, url))[:8]
+        logging.debug("getId: " + url + " -> " + id)
+
+        return id
 
     def __isExistImg(self, f):
         return os.path.exists(self.imgPath + "/" + f)
