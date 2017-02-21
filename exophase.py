@@ -1,14 +1,17 @@
 from urllib.parse import quote_plus, urlparse
 from urllib.request import urlopen
+from urllib.request import urlretrieve
 from bs4 import BeautifulSoup
 from datetime import datetime
 import logging
 import re
+import os
+import base64
 
 logging.basicConfig(level=logging.DEBUG)
 
 class Exophase:
-    def __init__(self, url="https://www.exophase.com"):
+    def __init__(self, url="https://www.exophase.com", imgPath=None):
         logging.debug("Exophase init: " + url)
         self.__url = urlparse(url)
         self.BASE_URL = self.__url.geturl()
@@ -17,6 +20,13 @@ class Exophase:
         self.PUBLISHER_CHECKER = self.__url.netloc + "/publisher/"
         self.DEVELOPER_CHECKER = self.__url.netloc + "/developer/"
         self.GENRE_CHECKER = self.__url.netloc + "/genre/"
+
+        if imgPath == None:
+            self.imgPath = os.getcwd()
+        else:
+            self.imgPath = imgPath
+
+        logging.debug("imgPath: " + self.imgPath)
 
         logging.debug("BASE_URL: " + self.BASE_URL)
         logging.debug("SEARCH_URL: " + self.SEARCH_URL)
@@ -62,9 +72,19 @@ class Exophase:
 
         for item in items:
             result = {}
-            result["id"] = item["data-award-id"]
+
+            title = item.find("div", {"class": "trophy-title"}).get_text().strip()
+
+            result["id"] = self.getId(url + quote_plus(title))
+            result["image"] = result["id"] + ".png"
+
+            if not self.__isExistImg(result["image"]):
+                logging.debug("item image download: " + result["image"])
+                urlretrieve(item.find("img")['src'].replace("/s/", "/l/"), self.imgPath + "/" + result["image"])
+
+            result["order"] = item["data-award-id"]
             result["secret"] = False if (item.find("div", {"class": "secret"}) == None) else True
-            result["title"] = item.find("div", {"class": "trophy-title"}).get_text().strip()
+            result["title"] = title
             result["desc"] = item.find("div", {"class": "trophy-desc"}).get_text().strip()
             result["type"] = item.find("div", {"class": "type"}).span['title'].lower()
 
@@ -102,9 +122,19 @@ class Exophase:
 
         for item in items:
             result = {}
-            result["id"] = item["data-award-id"]
+
+            title = item.find("div", {"class": "trophy-title"}).get_text().strip()
+
+            result["id"] = self.getId(url + quote_plus(title))
+            result["image"] = result["id"] + ".png"
+
+            if not self.__isExistImg(result["image"]):
+                logging.debug("item image download: " + result["image"])
+                urlretrieve(item.find("img")['src'].replace("/s/", "/l/"), self.imgPath + "/" + result["image"])
+
+            result["order"] = item["data-award-id"]
             result["secret"] = False if (item.find("div", {"class": "secret"}) == None) else True
-            result["title"] = item.find("div", {"class": "trophy-title"}).get_text().strip()
+            result["title"] = title
             result["desc"] = item.find("div", {"class": "trophy-desc"}).get_text().strip()
             result["type"] = None
             result["score"] = int(re.findall(r'\d+', item.find("div", {"class": "gamerscore"}).get_text())[0])
@@ -117,6 +147,17 @@ class Exophase:
     def __getGameInfo(self, url, result):
         html = urlopen(url)
         bs = BeautifulSoup(html, "lxml")
+
+        # logging.debug(bs)
+
+        result["image"] = result["gid"] + ".png"
+
+        if not self.__isExistImg(result["image"]):
+            logging.debug("game image download: " + result["image"])
+            urlretrieve(bs.find("div", {"class": "feature-header"}).a.img["src"], self.imgPath + "/" + result["image"])
+
+        # response = urlopen(bs.find("div", {"class": "feature-header"}).a.img["src"])
+        # result["image"] = base64.b64encode(response.read())
 
         result["title"] = bs.find("div", {"class":"info-top-block"}).h2.get_text().strip()
         result["platform"] = [item.get_text().lower() for item in \
@@ -172,7 +213,10 @@ class Exophase:
         logging.debug("getId: " + url)
 
         l = [x for x in url.split("/") if x]
-        return hashlib.md5(l[len(l) - 1].encode("utf-8")).hexdigest()
+        return hashlib.md5(l[len(l) - 1].encode("utf-8")).hexdigest()[:12]
+
+    def __isExistImg(self, f):
+        return os.path.exists(self.imgPath + "/" + f)
 
 if __name__ == "__main__":
     import random
@@ -188,10 +232,10 @@ if __name__ == "__main__":
     # for link in links:
     #     print(link)
 
-    # print(exo.getInfo("file:///Volumes/Data/personal/exo/fifa-17-ps4.html", debug=True))
+    print(exo.getInfo("file:///Volumes/Data/personal/exo/fifa-17-ps4.html", debug=True))
     # print(exo.getInfo("file:///Volumes/Data/personal/exo/test.html", debug=True))
     # print(exo.getInfo("https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn"))
-    exo.getInfo("https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn/")
+    # exo.getInfo("https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn/")
 
     # import hashlib
     # print(hashlib.md5(b"https://www.exophase.com/game/super-robot-wars-og-the-moon-dwellers-psn").hexdigest())
